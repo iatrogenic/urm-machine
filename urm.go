@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type Program struct {
@@ -16,10 +16,34 @@ func (p Program) loc() int {
 	return len(p.Instructions)
 }
 
+func (p Program) rho() int {
+	l_reg := 0
+	for _, instruction := range p.Instructions {
+		inst_type := string(instruction[0])
+		parsed_args := strToIntSlice(strings.Split(instruction[2:len(instruction)-1], ","))
+		switch inst_type {
+		case "Z", "S":
+			if parsed_args[0] > l_reg {
+				l_reg = parsed_args[0]
+			}
+
+		case "T", "J":
+			if (parsed_args[1] > l_reg) || (parsed_args[0] > l_reg) {
+				if parsed_args[1] >= parsed_args[0] {
+					l_reg = parsed_args[1]
+				} else {
+					l_reg = parsed_args[0]
+				}
+			}
+		}
+	}
+	return l_reg
+}
+
 // Converts []string into []int, given certain assumptions
 func strToIntSlice(original []string) []int {
-	var new_slice []int 
-	for _,n := range original {
+	var new_slice []int
+	for _, n := range original {
 		content, _ := strconv.Atoi(n)
 		new_slice = append(new_slice, content)
 	}
@@ -32,15 +56,18 @@ func runProgram(program Program, init string, debug bool) {
 	flow_pointer = 0
 
 	// Parse initial configuration
-	init_c := strToIntSlice(strings.Split(init, ","))	
-	
-	// Preparing the tape 
-	fmt.Println("Setting initial configuration")	
-	tape := make(map[int]int)		
+	init_c := strToIntSlice(strings.Split(init, ","))
+
+	// Preparing the tape
+	fmt.Println("Setting initial configuration")
+	tape := make(map[int]int)
 	for i, n := range init_c {
 		tape[i] = n
 	}
-	
+	for i := len(tape); i <= program.rho(); i++ {
+		tape[i] = 0
+	}
+
 	// Running the instructions
 	fmt.Printf("Running program \"%s\"\n", program.Name)
 
@@ -50,25 +77,25 @@ func runProgram(program Program, init string, debug bool) {
 			fmt.Println(flow_pointer)
 			fmt.Scanln()
 		}
-		instruction := program.Instructions[flow_pointer]	
+		instruction := program.Instructions[flow_pointer]
 		inst_type := string(instruction[0])
 		parsed_args := strToIntSlice(strings.Split(instruction[2:len(instruction)-1], ","))
 		switch inst_type {
-			case "Z" :
-				tape[parsed_args[0]] = 0	
+		case "Z":
+			tape[parsed_args[0]] = 0
+			flow_pointer += 1
+		case "S":
+			tape[parsed_args[0]] += 1
+			flow_pointer += 1
+		case "T":
+			tape[parsed_args[1]] = tape[parsed_args[0]]
+			flow_pointer += 1
+		case "J":
+			if tape[parsed_args[0]] == tape[parsed_args[1]] {
+				flow_pointer = parsed_args[2]
+			} else {
 				flow_pointer += 1
-			case "S" :
-				tape[parsed_args[0]] += 1 
-				flow_pointer += 1
-			case "T" :
-				tape[parsed_args[1]] = tape[parsed_args[0]]
-				flow_pointer += 1
-			case "J" :
-				if tape[parsed_args[0]] == tape[parsed_args[1]] {
-					flow_pointer = parsed_args[2]
-				} else {
-					flow_pointer += 1
-				}
+			}
 		}
 	}
 
@@ -115,11 +142,10 @@ func main() {
 			fmt.Scanf("%t", &debug)
 
 			if pindex <= len(programs) && pindex >= 0 {
-				runProgram(programs[pindex], init, debug)	
+				runProgram(programs[pindex], init, debug)
 			} else {
 				fmt.Println("ERROR: Selected index is out of bounds.")
 			}
-
 
 		// Loads an URM program into memory
 		case "load":
@@ -137,7 +163,7 @@ func main() {
 
 		case "show":
 			// Chosen program
-			var choice int 
+			var choice int
 
 			fmt.Printf("There are %d loaded programs.\n", len(programs))
 			fmt.Println("i :  name \t LOC")
@@ -155,12 +181,7 @@ func main() {
 
 		case "help":
 
-			hlp := `
-			Command List:
-			run \t runs a chosen program
-			load \t loads program onto memory
-			help \t Console command list \n display \t Displays program's instructions"
-			`
+			hlp := "\nCommand List:\nrun \t runs a chosen program\nload \t loads program onto memory\nhelp \t Console command list \ndisplay \t Displays program's instructions"
 			fmt.Println(hlp)
 		}
 
