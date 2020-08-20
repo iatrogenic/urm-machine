@@ -1,14 +1,19 @@
+// To-Do:
+// Write an actual parser
+// Polish the debug mode
+
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
 
 type Program struct {
-	Name         string
 	Instructions []string
 }
 
@@ -59,7 +64,6 @@ func runProgram(program Program, init string, debug bool) {
 	init_c := strToIntSlice(strings.Split(init, ","))
 
 	// Preparing the tape
-	fmt.Println("Setting initial configuration")
 	tape := make(map[int]int)
 	for i, n := range init_c {
 		tape[i] = n
@@ -69,8 +73,6 @@ func runProgram(program Program, init string, debug bool) {
 	}
 
 	// Running the instructions
-	fmt.Printf("Running program \"%s\"\n", program.Name)
-
 	for flow_pointer <= loc {
 		if debug == true {
 			fmt.Println(tape)
@@ -99,91 +101,43 @@ func runProgram(program Program, init string, debug bool) {
 		}
 	}
 
-	fmt.Printf("Execution finished. R1 = %d.\n", tape[0])
+	fmt.Printf("Execution finished: R1 = %d.\n", tape[0])
 
 }
 
-func parseProg(filename string, name string) Program {
+func parseProg(filename string) Program {
 
 	contents, err := ioutil.ReadFile(filename)
 	if err != nil {
 		fmt.Printf("An error has occured while parsing %s", filename)
+		os.Exit(1)
 	}
 
 	instructions := strings.Split(strings.ReplaceAll(string(contents), "\n", ""), ";")
 
-	return Program{name, instructions}
+	return Program{instructions}
 }
 
 func main() {
-	var programs []Program
+	// var programs []Program
 
-	fmt.Println("\n(un)Limited Register Machine Console\nType \"help\" for the commands.")
+	var init_ptr = flag.String("init", "", "The initial configuration of the URM")
+	var debug_ptr = flag.Bool("debug", false, "Debug mode")
+	flag.Parse()
+	config := *init_ptr
+	debug := *debug_ptr
 
-	// REPL
-	for {
-		fmt.Printf("\n\n> ")
-		var command string
-		fmt.Scanf("%s", &command)
-
-		switch command {
-
-		case "run":
-
-			var init string
-			var debug bool
-			var pindex int
-
-			fmt.Printf("Program index: ")
-			fmt.Scanf("%d", &pindex)
-			fmt.Printf("Initial configuration (comma separated integers): ")
-			fmt.Scanf("%s", &init)
-			fmt.Printf("Debug mode (true/false): ")
-			fmt.Scanf("%t", &debug)
-
-			if pindex <= len(programs) && pindex >= 0 {
-				runProgram(programs[pindex], init, debug)
-			} else {
-				fmt.Println("ERROR: Selected index is out of bounds.")
-			}
-
-		// Loads an URM program into memory
-		case "load":
-			//Implement check on program size (> 0)
-
-			var filename, name string
-			fmt.Println("Filename:")
-			fmt.Scanf("%s", &filename)
-
-			fmt.Println("Name for this program:")
-			fmt.Scanf("%s", &name)
-
-			programs = append(programs, parseProg(filename, name))
-			fmt.Printf("Program %s successfully loaded.")
-
-		case "show":
-			// Chosen program
-			var choice int
-
-			fmt.Printf("There are %d loaded programs.\n", len(programs))
-			fmt.Println("i :  name \t LOC")
-
-			for index, p := range programs {
-				fmt.Printf("%d : %s \t %d", index, p.Name, p.loc())
-			}
-
-			fmt.Printf("\nWrite the program's index: ")
-			fmt.Scanf("%d", &choice)
-
-			for index, line := range programs[choice].Instructions {
-				fmt.Printf("\n I[%d] : %s", index, line)
-			}
-
-		case "help":
-
-			hlp := "\nCommand List:\nrun \t runs a chosen program\nload \t loads program onto memory\nhelp \t Console command list \ndisplay \t Displays program's instructions"
-			fmt.Println(hlp)
-		}
-
+	if debug {
+		fmt.Println("Debug mode is on.")
 	}
+	if flag.NArg() != 1 {
+		fmt.Println("Incompatible number of arguments.")
+		os.Exit(1)
+	}
+
+	var filename string
+	filename = flag.Args()[0]
+
+	program := parseProg(filename)
+	runProgram(program, config, debug)
 }
