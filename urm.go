@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sort"
 )
 
 type Program struct {
@@ -55,6 +56,18 @@ func strToIntSlice(original []string) []int {
 	return new_slice
 }
 
+func displayDebug(tape map[int]int, instruction string, f_pointer int) {
+	var registers []int
+	for k := range tape {
+		registers = append(registers, k)
+	}
+	sort.Ints(registers)
+	for _, k := range registers{
+		fmt.Printf("R%d ← %d | ", k, tape[k])
+	}
+	fmt.Printf("\nNext instruction: I[%d] = %s", f_pointer, instruction)
+}
+
 func runProgram(program Program, init string, debug bool) {
 	var loc, flow_pointer int
 	loc = program.loc() - 1
@@ -74,14 +87,17 @@ func runProgram(program Program, init string, debug bool) {
 
 	// Running the instructions
 	for flow_pointer <= loc {
-		if debug == true {
-			fmt.Println(tape)
-			fmt.Println(flow_pointer)
-			fmt.Scanln()
-		}
 		instruction := program.Instructions[flow_pointer]
 		inst_type := string(instruction[0])
 		parsed_args := strToIntSlice(strings.Split(instruction[2:len(instruction)-1], ","))
+
+		// Need to finish this
+		if debug {
+			displayDebug(tape, instruction, flow_pointer)
+			var step string
+			fmt.Scanf("%s", &step)
+		}
+
 		switch inst_type {
 		case "Z":
 			tape[parsed_args[0]] = 0
@@ -101,7 +117,7 @@ func runProgram(program Program, init string, debug bool) {
 		}
 	}
 
-	fmt.Printf("Execution finished: R1 = %d.\n", tape[0])
+	fmt.Printf("Execution finished: R0 = %d.\n", tape[0])
 
 }
 
@@ -119,6 +135,7 @@ func parseProg(filename string) Program {
 }
 
 func main() {
+	// Add this back when we have generalized URM
 	// var programs []Program
 
 	var init_ptr = flag.String("init", "", "The initial configuration of the URM")
@@ -126,7 +143,7 @@ func main() {
 	flag.Parse()
 	config := *init_ptr
 	debug := *debug_ptr
-
+	// Remove this later 
 	if debug {
 		fmt.Println("Debug mode is on.")
 	}
